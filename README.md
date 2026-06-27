@@ -1,16 +1,12 @@
-# Kubernetes App Deployment Orchestration MCP Server
+# mcp-k8s-deployer
 
-A production-ready Model Context Protocol (MCP) server that empowers LLMs to dynamically orchestrate containerized application deployments to a Kubernetes cluster. 
+[![PyPI version](https://img.shields.io/pypi/v/mcp-k8s-deployer)](https://pypi.org/project/mcp-k8s-deployer/)
+[![Python](https://img.shields.io/pypi/pyversions/mcp-k8s-deployer)](https://pypi.org/project/mcp-k8s-deployer/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-It handles configuration validation, interactive storage resolution, multi-resource manifest generation (Namespace, PersistentVolumeClaim, Deployment, Service), dry-run plan reviews, actual apply actions, and service endpoints extraction optimized for `cloudflared` tunnel routing.
+A production-ready Model Context Protocol (MCP) server that empowers LLMs to dynamically orchestrate containerized application deployments to a Kubernetes cluster.
 
----
-
-## Architecture Overview
-
-For a detailed view of the system design and interaction flow, see the approved [Implementation Plan](.gemini/antigravity-ide/brain/0128e6ba-36df-49fe-a865-64838e050951/implementation_plan.md).
-
-![Architecture Diagram](.gemini/antigravity-ide/brain/0128e6ba-36df-49fe-a865-64838e050951/mcp_k8s_architecture_1782533118153.png)
+It handles configuration validation, interactive storage resolution, multi-resource manifest generation (Namespace, PersistentVolumeClaim, Deployment, Service), dry-run plan reviews, actual apply actions, and service endpoint extraction optimized for `cloudflared` tunnel routing.
 
 ---
 
@@ -32,24 +28,29 @@ For a detailed view of the system design and interaction flow, see the approved 
 
 ---
 
-## Installation & Setup
+## Installation
 
-1. **Clone or navigate to the workspace**:
-   ```bash
-   cd /home/prod-server-2/mcp-k8s-deployer
-   ```
+### From PyPI (recommended)
 
-2. **Create a virtual environment and install dependencies**:
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
+```bash
+pip install mcp-k8s-deployer
+```
 
-3. **Verify the installation by running the test suite**:
-   ```bash
-   python3 -m pytest -v
-   ```
+### From source
+
+```bash
+git clone https://github.com/stwins60/mcp-k8s-deployer.git
+cd mcp-k8s-deployer
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Verify installation
+
+```bash
+python3 -m pytest -v
+```
 
 ---
 
@@ -71,7 +72,7 @@ The server supports configuration through environment variables or a YAML config
 
 ### YAML Configuration File
 
-Create a `config.yaml` file in the root of the project (or store it in `/etc/mcp-k8s/config.yaml`). See [config.yaml.example](config.yaml.example) for template fields.
+Create a `config.yaml` file in the root of the project (or store it in `/etc/mcp-k8s/config.yaml`):
 
 ```yaml
 logging:
@@ -89,8 +90,6 @@ defaults:
 ---
 
 ## Exposed MCP Tools
-
-The server exposes the following tools to MCP-enabled clients:
 
 ### 1. `choose_storage_option_tool`
 Assesses storage configuration based on StorageClass and PV requirements.
@@ -116,10 +115,10 @@ Gathers configurations, validates inputs, and generates Kubernetes manifests in 
   - `existing_pv_name` (str, optional)
   - `env_vars` (dict, optional)
   - `hostname` (str, optional)
-* **Returns**: Generates a multi-document YAML string representing the Namespace, PVC, Deployment, and Service.
+* **Returns**: A multi-document YAML string representing the Namespace, PVC, Deployment, and Service.
 
 ### 3. `plan_deployment_tool`
-Validates inputs, generates manifests, and runs a **server-side dry-run apply** against the cluster. Shows the exact plan of actions.
+Validates inputs, generates manifests, and runs a **server-side dry-run apply** against the cluster.
 * **Arguments**: Same as `deploy_app_tool`.
 * **Returns**: The generated manifests, dry-run actions list (e.g., `Created`, `Patched`), and validation status.
 
@@ -127,14 +126,14 @@ Validates inputs, generates manifests, and runs a **server-side dry-run apply** 
 Applies approved manifests to the Kubernetes cluster.
 * **Arguments**:
   - `manifests` (str, required): The generated YAML manifests.
-  - `approved` (bool, required): Enforces safety. Must be set to `True`.
+  - `approved` (bool, required): Must be set to `True` to confirm.
 * **Returns**: Success status and array of resources created or patched.
 
 ### 5. `create_namespace_tool`
-Creates a namespace if requested and it doesn't already exist.
+Creates a namespace if it doesn't already exist.
 * **Arguments**:
-  - `namespace` (str, required): The namespace to create.
-  - `dry_run` (bool, optional): Runs dry-run check if `True`.
+  - `namespace` (str, required)
+  - `dry_run` (bool, optional)
 
 ### 6. `get_service_endpoint_tool`
 Computes the internal cluster Service DNS endpoint.
@@ -142,22 +141,40 @@ Computes the internal cluster Service DNS endpoint.
 * **Returns**: The service URL (e.g. `http://app.namespace.svc.cluster.local:80`).
 
 ### 7. `build_cloudflared_target_tool`
-Generates the exact target service string to paste into a cloudflared tunnel mapping configuration.
+Generates the exact target string to paste into a cloudflared tunnel mapping configuration.
 * **Arguments**: `app_name` (str), `namespace` (str), `container_port` (int).
 
 ---
 
 ## Claude Desktop Integration
 
-To configure this server to run in Claude Desktop, add the following entry to your configuration file (usually located at `~/.config/Claude/claude_desktop_config.json` on Linux):
+### Using the pip-installed package
+
+Add the following to your Claude Desktop config (`~/.config/Claude/claude_desktop_config.json` on Linux):
 
 ```json
 {
   "mcpServers": {
     "kubernetes-deployer": {
-      "command": "/home/prod-server-2/mcp-k8s-deployer/.venv/bin/python3",
+      "command": "mcp-k8s-deployer",
+      "env": {
+        "MCP_K8S_DEFAULT_NFS_STORAGE_CLASS": "nfs",
+        "MCP_K8S_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
+```
+
+### Using a local source checkout
+
+```json
+{
+  "mcpServers": {
+    "kubernetes-deployer": {
+      "command": "/path/to/.venv/bin/python3",
       "args": [
-        "/home/prod-server-2/mcp-k8s-deployer/src/server.py"
+        "/path/to/mcp-k8s-deployer/src/server.py"
       ],
       "env": {
         "MCP_K8S_DEFAULT_NFS_STORAGE_CLASS": "nfs",
@@ -172,73 +189,67 @@ To configure this server to run in Claude Desktop, add the following entry to yo
 
 ## Transport Selection (Stdio vs SSE)
 
-By default, the server runs over standard input/output (**stdio**) transport, which is suitable for local integrations like Claude Desktop.
+By default, the server runs over standard input/output (**stdio**) transport, suitable for local integrations like Claude Desktop.
 
-If you are publishing the server as a web service or registering it with public HTTP gateways (like **Smithery HTTP endpoints**), you can run the server using **SSE (Server-Sent Events)** transport.
-
-### Running over Stdio (Default)
+### Running over Stdio (default)
 ```bash
 python3 src/server.py --transport stdio
 ```
 
-### Running over SSE (HTTP Web Server)
+### Running over SSE (HTTP web server)
 ```bash
 python3 src/server.py --transport sse --host 0.0.0.0 --port 8000
 ```
+
 Or use environment variables:
 ```bash
 export MCP_TRANSPORT=sse
 export MCP_PORT=8000
 python3 src/server.py
 ```
-*This starts a web server listening on port 8000. The MCP endpoint will be accessible at `http://<your-host>:8000/sse`.*
+
+The MCP endpoint will be accessible at `http://<your-host>:8000/sse`.
 
 ---
 
 ## Typical Execution Flow
 
-1. **User Request**: *"I want to deploy my Node.js application `auth-service` using `node:18` in the `dev` namespace. It needs 5Gi of gp2 storage."*
+1. **User Request**: *"Deploy my Node.js app `auth-service` using `node:18` in the `dev` namespace. It needs 5Gi of gp2 storage."*
 2. **Storage Decision**: The LLM calls `choose_storage_option_tool(storage_class="gp2", has_existing_pv=False, storage_size="5Gi")`.
-3. **Storage Advice**: The server returns that `gp2` is non-default, advising that a PVC will be generated but will rely on dynamic provisioning unless a PV is provided. The LLM presents this choice to the user.
-4. **Planning**: The user confirms. The LLM calls `plan_deployment_tool(...)` which returns the planned resources and dry-run apply status.
-5. **Confirmation**: The LLM shows the YAML manifests to the user.
+3. **Storage Advice**: The server advises that `gp2` is non-default and will rely on dynamic provisioning. The LLM presents this to the user.
+4. **Planning**: The user confirms. The LLM calls `plan_deployment_tool(...)`, which returns the planned resources and dry-run status.
+5. **Confirmation**: The LLM presents the YAML manifests for user review.
 6. **Execution**: The user confirms. The LLM calls `apply_deployment_tool(manifests="...", approved=True)`.
-7. **Mapping**: The LLM calls `build_cloudflared_target_tool(...)` and prints the final Cloudflare Tunnel ingress target (e.g., `http://auth-service.dev.svc.cluster.local:80`).
+7. **Mapping**: The LLM calls `build_cloudflared_target_tool(...)` and prints the Cloudflare Tunnel ingress target (e.g., `http://auth-service.dev.svc.cluster.local:80`).
 
 ---
 
-## Publishing & Distribution
+## Distribution
 
-This project includes all necessary configurations to publish and package the MCP server.
+### PyPI
 
-### 1. Build and Publish on PyPI
-Compile the server into a standard pip package and upload it to PyPI:
-```bash
-# Install builder and twine
-pip install --upgrade build twine
+The package is published to PyPI automatically via GitHub Actions on every new GitHub Release using OIDC trusted publishing — no API tokens required.
 
-# Build package artifacts
-python3 -m build
+To release a new version:
+1. Update `version` in `pyproject.toml`
+2. Commit and push to `master`
+3. Create a new GitHub Release with a version tag (e.g., `v1.0.1`)
 
-# Upload package to PyPI
-python3 -m twine upload dist/*
-```
-*Once published, users can install it via `pip install mcp-k8s-deployer` and run the executable `mcp-k8s-deployer`.*
+The workflow at `.github/workflows/publish.yml` will build and upload to PyPI automatically.
 
-### 2. Package as a Docker Container
-Build and distribute a lightweight, secure Docker image:
+### Docker
+
 ```bash
 # Build the container image
 docker build -t your-dockerhub-username/mcp-k8s-deployer:latest .
 
-# Push the container image to Docker Hub
+# Push to Docker Hub
 docker push your-dockerhub-username/mcp-k8s-deployer:latest
 ```
 
-### 3. Deploy with Docker Compose & Cloudflare Tunnel
-For a ready-to-run setup that exposes the MCP server over HTTP using a Cloudflare Tunnel:
+### Docker Compose & Cloudflare Tunnel
 
-1. Create a `.env` file in the same directory as `docker-compose.yaml` to hold your Cloudflare token:
+1. Create a `.env` file with your Cloudflare token:
    ```env
    CLOUDFLARE_TUNNEL_TOKEN=your_cloudflare_tunnel_token_here
    ```
@@ -246,23 +257,23 @@ For a ready-to-run setup that exposes the MCP server over HTTP using a Cloudflar
    ```bash
    docker compose up -d
    ```
-3. In your Cloudflare Zero Trust Dashboard, set up a **Public Hostname** for your tunnel:
-   - **Subdomain/Domain**: `mcp.yourdomain.com`
+3. In your Cloudflare Zero Trust Dashboard, configure a **Public Hostname**:
+   - **Domain**: `mcp.yourdomain.com`
    - **Service Type**: `HTTP`
-   - **URL**: `mcp-server:8000` (or `localhost:8000` if using host network mode)
+   - **URL**: `mcp-server:8000`
 
-*Your MCP server is now securely routed at `https://mcp.yourdomain.com/sse`.*
+Your MCP server will be accessible at `https://mcp.yourdomain.com/sse`.
 
+---
 
-### 4. Share on GitHub
-To share the codebase on GitHub, initialize git, register origin, and push:
-```bash
-git init
-git add .
-git commit -m "Initial commit of MCP Kubernetes deployer"
-git remote add origin https://github.com/yourusername/mcp-k8s-deployer.git
-git branch -M main
-git push -u origin main
-```
-*Note: A `.gitignore` file has been preconfigured to exclude environment files and build caches.*
+## Links
 
+- **PyPI**: https://pypi.org/project/mcp-k8s-deployer/
+- **GitHub**: https://github.com/stwins60/mcp-k8s-deployer
+- **Issues**: https://github.com/stwins60/mcp-k8s-deployer/issues
+
+---
+
+## License
+
+MIT
