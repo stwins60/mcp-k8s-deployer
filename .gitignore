@@ -22,3 +22,8 @@ htmlcov/
 config.yaml
 .env
 *.log
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
