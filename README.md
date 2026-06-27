@@ -1,6 +1,6 @@
 # mcp-k8s-deployer
 
-[![PyPI version](https://img.shields.io/pypi/v/mcp-k8s-deployer)](https://pypi.org/project/mcp-k8s-deployer/)
+[![GitHub release](https://img.shields.io/github/v/release/stwins60/mcp-k8s-deployer)](https://github.com/stwins60/mcp-k8s-deployer/releases)
 [![Python](https://img.shields.io/pypi/pyversions/mcp-k8s-deployer)](https://pypi.org/project/mcp-k8s-deployer/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
