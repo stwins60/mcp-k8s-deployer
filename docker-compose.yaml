@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    build: .
+    container_name: mcp-k8s-deployer
+    restart: unless-stopped
+    environment:
+      - MCP_TRANSPORT=sse
+      - MCP_PORT=8000
+      - KUBECONFIG=/home/mcpuser/.kube/config
+      # Optional: default StorageClass overrides
+      - MCP_K8S_DEFAULT_NFS_STORAGE_CLASS=nfs
+      - MCP_K8S_LOG_LEVEL=INFO
+    volumes:
+      # Mounts the host's Kubernetes credentials so the server can communicate with the cluster.
+      # Runs as user 'mcpuser' (uid 1000) inside the container.
+      - ~/.kube:/home/mcpuser/.kube:ro
+    ports:
+      - "8000:8000"
+    
+    # ---------------------------------------------------------------------------------
+    # Networking options:
+    # ---------------------------------------------------------------------------------
+    # OPTION A: Share Host Network (Recommended for local clusters like k3s / minikube)
+    # This allows the container to talk to the K8s API at '127.0.0.1:6443' without modifications.
+    # If using host network mode, uncomment the line below and comment out the 'ports' section above.
+    # network_mode: "host"
+    # 
+    # OPTION B: Default Bridge Mode (For remote clusters or cloud K8s APIs)
+    # Uses host-gateway mapping to let the container reach the host.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: mcp-cloudflared
+    restart: unless-stopped
+    # Use your Cloudflare Tunnel Token from Zero Trust Dashboard
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    # Link to the mcp-server container network
+    depends_on:
+      - mcp-server
